@@ -30,24 +30,28 @@ func echonet_mqtt() {
 	}
 
 	fmt.Println("get state")
-	node.State()
-	time.Sleep(1 * time.Second)
-
-	fmt.Println("power on")
-	node.PowerOnAuto()
-
-	time.Sleep(60 * time.Second)
-
-	fmt.Println("get state")
-	node.State()
-
-	time.Sleep(60 * time.Second)
-
-	fmt.Println("power off")
-	node.PowerOff()
-	time.Sleep(3 * time.Second)
-
-	fmt.Println("get state")
+	node.Property()
 	node.State()
 	time.Sleep(3 * time.Second)
+
+	if true {
+		fmt.Println("power on")
+		//node.SetMode("auto")
+		node.SetMode("cool")
+
+		time.Sleep(60 * time.Second)
+
+		fmt.Println("get state")
+		node.State()
+
+		time.Sleep(60 * time.Second)
+
+		fmt.Println("power off")
+		node.SetMode("off")
+		time.Sleep(3 * time.Second)
+
+		fmt.Println("get state")
+		node.State()
+		time.Sleep(3 * time.Second)
+	}
 }

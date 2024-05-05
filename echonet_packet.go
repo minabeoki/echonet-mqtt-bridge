@@ -15,11 +15,15 @@ const (
 	ESV_INFC_RES   = 0x7a
 	ESV_SETGET_RES = 0x7e
 
-	EPC_POWER        = 0x80
-	EPC_MODE         = 0xb0
-	EPC_TARGET_TEMP  = 0xb3
-	EPC_ROOM_TEMP    = 0xbb
-	EPC_OUTDOOR_TEMP = 0xbe
+	EPC_POWER           = 0x80
+	EPC_FAN             = 0xa0
+	EPC_SWING           = 0xa3
+	EPC_MODE            = 0xb0
+	EPC_TARGET_TEMP     = 0xb3
+	EPC_TARGET_HUMIDITY = 0xb4
+	EPC_ROOM_HUMIDITY   = 0xba
+	EPC_ROOM_TEMP       = 0xbb
+	EPC_OUTDOOR_TEMP    = 0xbe
 )
 
 type EchonetProperty struct {
@@ -104,7 +108,23 @@ func (pkt *EchonetPacket) String() string {
 
 	for _, prop := range pkt.Props {
 		s += fmt.Sprintf(" EPC:%02x", prop.EPC)
-		for _, edt := range prop.EDT {
+		edt_list := prop.EDT
+		if prop.EPC == 0x9d || prop.EPC == 0x9e || prop.EPC == 0x9f {
+			if prop.PDC == 17 {
+				edt_list = []byte{}
+				for i := 0; i < 8; i++ {
+					for j := 0; j < 16; j++ {
+						if (prop.EDT[j+1] & (1 << i)) != 0 {
+							edt_list = append(edt_list, byte(0x80+i*0x10+j))
+						}
+					}
+				}
+			} else {
+				edt_list = prop.EDT[1:]
+			}
+		}
+
+		for _, edt := range edt_list {
 			s += fmt.Sprintf(" %02x", edt)
 		}
 	}

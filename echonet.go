@@ -12,6 +12,10 @@ const (
 	ECHONET_EOJ_AIRCON = 0x013001
 )
 
+var (
+	recv_echonet = make(chan *EchonetNode, 8)
+)
+
 type EchonetNode struct {
 	addr            *net.UDPAddr
 	conn            net.Conn
@@ -128,9 +132,9 @@ func (node *EchonetNode) SetMode(mode string) error {
 		pkt.AddProperty1(EPC_MODE, 0x43)  // heat mode
 		pkt.AddProperty1(0xc1, 0x41)      // humidification on
 		pkt.AddProperty1(0xc4, 0x41)      // humidification auto
-	case "dehumidify":
+	case "dry":
 		pkt.AddProperty1(EPC_POWER, 0x30) // power on
-		pkt.AddProperty1(EPC_MODE, 0x44)  // dehumidify mode
+		pkt.AddProperty1(EPC_MODE, 0x44)  // dry mode
 	case "fan":
 		pkt.AddProperty1(EPC_POWER, 0x30) // power on
 		pkt.AddProperty1(EPC_MODE, 0x45)  // fan mode
@@ -173,6 +177,18 @@ func (node *EchonetNode) GetTargetTemp() (temp int) {
 		return node.room_temp
 	}
 	return node.target_temp
+}
+
+func (node *EchonetNode) GetRoomTemp() int {
+	return node.room_temp
+}
+
+func (node *EchonetNode) GetOutdoorTemp() int {
+	return node.outdoor_temp
+}
+
+func (node *EchonetNode) GetRoomHumidfy() int {
+	return node.room_humidity
 }
 
 func (node *EchonetNode) Property() {
@@ -219,7 +235,7 @@ func (node *EchonetNode) Handler(pkt *EchonetPacket) {
 				case 0x43:
 					node.mode = "heat"
 				case 0x44:
-					node.mode = "dehumidify"
+					node.mode = "dry"
 				case 0x45:
 					node.mode = "fan"
 				case 0x46:
@@ -249,6 +265,7 @@ func (node *EchonetNode) Handler(pkt *EchonetPacket) {
 			node.target_temp = node.room_temp
 		}
 
+		recv_echonet <- node
 		fmt.Printf("Handler: %+v\n", node)
 	}
 }

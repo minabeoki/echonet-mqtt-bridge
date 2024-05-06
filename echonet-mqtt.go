@@ -11,7 +11,15 @@ import (
 )
 
 type Config struct {
-	Broker string `json:"broker"`
+	Broker     string   `json:"broker"`
+	ObjectList []Object `json:"list"`
+}
+
+type Object struct {
+	Type string `json:"type"`
+	Name string `json:"name"`
+	Addr string `json:"addr"`
+	Eoj  string `json:"eoj"`
 }
 
 func main() {
@@ -30,81 +38,113 @@ func echonet_mqtt() {
 	fn := os.Args[1]
 	cfg, err := readConfig(fn)
 	if err != nil {
-		log.Fatalf("%s", err)
+		log.Fatalf("%s: %s", fn, err)
 	}
 	log.Printf("config: %+v\n", cfg)
 
-	mqtt, err := NewMqtt(cfg)
+	echonet, err := NewEchonet()
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
-	echonet := NewEchonet()
+	for _, obj := range cfg.ObjectList {
+		node, err := echonet.NewNode(obj)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+		fmt.Printf("added: %+v\n", node)
+	}
+
 	err = echonet.StartReceiver()
 	if err != nil {
-		panic(err)
+		log.Fatalf("%s", err)
 	}
 
-	node, err := echonet.NewNodeAircon("aircon-living")
+	err = echonet.StateAll()
 	if err != nil {
-		panic(err)
+		log.Fatalf("%s", err)
 	}
-
-	fmt.Println("get state")
-	//node.Property()
-	node.State()
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	if false {
-		fmt.Println("power on")
-		//node.SetMode("auto")
-		node.SetMode("cool")
+		//echonet.SendAnnounce()
+		//time.Sleep(3 * time.Second)
+	}
 
-		time.Sleep(60 * time.Second)
+	mqtt, err := NewMqtt(cfg.Broker)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 
-		fmt.Println("get state")
-		node.State()
-
-		time.Sleep(60 * time.Second)
-
-		fmt.Println("power off")
-		node.SetMode("off")
-		time.Sleep(3 * time.Second)
-
-		fmt.Println("get state")
-		node.State()
-		time.Sleep(3 * time.Second)
+	for _, node := range echonet.NodeList() {
+		topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
+		switch node.GetType() {
+		case "light":
+			mqtt.Subscribe(topic + "/power/set")
+		case "aircon":
+			mqtt.Subscribe(topic + "/mode/set")
+			mqtt.Subscribe(topic + "/temperature/set")
+		}
 	}
 
 	for {
 		select {
 
-		case dev := <-recv_echonet:
-			fmt.Printf("recv: %+v\n", dev)
-			mqtt.Send("aircon/livingroom/mode", dev.GetMode())
-			mqtt.Send("aircon/livingroom/temperature",
-				strconv.Itoa(dev.GetTargetTemp()))
-			mqtt.Send("sensor/aircon/livingroom/temperature",
-				strconv.Itoa(dev.GetRoomTemp()))
+		case node := <-recv_echonet:
+			fmt.Printf("recv: %+v\n", node)
+			topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
+			switch node.GetType() {
+
+			case "light":
+				mqtt.Send(topic+"/power", node.GetPower())
+
+			case "aircon":
+				mqtt.Send(topic+"/mode", node.GetMode())
+				mqtt.Send(topic+"/temperature",
+					strconv.Itoa(node.GetTargetTemp()))
+				mqtt.Send("sensor/"+topic+"/temperature",
+					strconv.Itoa(node.GetRoomTemp()))
+
+			}
 
 		case msg := <-recv_mqtt:
 			topic := strings.Split(msg[0], "/")
 			payload := msg[1]
 			log.Printf("recv: %+v: %s\n", topic, payload)
 
-			switch topic[2] {
-			case "mode":
-				node.SetMode(payload)
-			case "temperature":
-				temp, _ := strconv.Atoi(payload)
-				node.SetTargetTemp(temp)
+			node := echonet.FindNode(topic[0], topic[1])
+			if node == nil {
+				log.Fatalf("invalid topic: %s", msg[0])
+			}
+
+			switch topic[0] {
+
+			case "light":
+				switch topic[2] {
+				case "power":
+					node.SetPower(payload)
+				default:
+					log.Fatalf("invalid topic: %s", msg[0])
+				}
+				node.State()
+
+			case "aircon":
+				switch topic[2] {
+				case "mode":
+					node.SetMode(payload)
+				case "temperature":
+					temp, _ := strconv.Atoi(payload)
+					node.SetTargetTemp(temp)
+				default:
+					log.Fatalf("invalid topic: %s", msg[0])
+				}
+				node.State()
 			}
 
 		case <-time.After(60 * time.Second):
+			echonet.StateAll()
 		}
 
-		node.State()
-		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -117,7 +157,9 @@ func readConfig(fn string) (Config, error) {
 	}
 
 	jsondec := json.NewDecoder(fp)
-	jsondec.Decode(&cfg)
+	if err := jsondec.Decode(&cfg); err != nil {
+		return cfg, err
+	}
 
 	return cfg, nil
 }

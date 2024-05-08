@@ -77,7 +77,7 @@ func (pkt *EchonetPacket) Bytes() []byte {
 }
 
 func (pkt *EchonetPacket) String() string {
-	s := fmt.Sprintf("TID:%d ", pkt.TID)
+	s := fmt.Sprintf("EOJ:%06x TID:%d ", pkt.SEOJ, pkt.TID)
 
 	switch pkt.ESV {
 	case ESV_SETI:

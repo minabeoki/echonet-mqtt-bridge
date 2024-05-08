@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"time"
@@ -87,7 +88,7 @@ func (en *Echonet) StartReceiver() error {
 
 			recv_pkt := NewEchonetPacket()
 			recv_pkt.Parse(buf[:length])
-			fmt.Printf("Received: %+v %s\n", addr, recv_pkt.String())
+			log.Printf("Received: %+v %s\n", addr.IP, recv_pkt.String())
 
 			for _, node := range en.Nodes {
 				if node.addr.IP.Equal(addr.IP) &&
@@ -365,6 +366,6 @@ func (node *EchonetNode) Handler(pkt *EchonetPacket) {
 		}
 
 		recv_echonet <- node
-		fmt.Printf("Handler: %+v\n", node)
+		//log.Printf("Handler: %+v\n", node)
 	}
 }

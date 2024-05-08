@@ -52,7 +52,8 @@ func echonet_mqtt() {
 		if err != nil {
 			log.Fatalf("%s", err)
 		}
-		fmt.Printf("added: %+v\n", node)
+		log.Printf("added %s:%06x %s %s\n", obj.Addr,
+			node.GetEoj(), node.GetType(), node.GetName())
 	}
 
 	err = echonet.StartReceiver()
@@ -91,7 +92,7 @@ func echonet_mqtt() {
 		select {
 
 		case node := <-recv_echonet:
-			fmt.Printf("recv: %+v\n", node)
+			log.Printf("recv_echonet: %+v\n", node)
 			topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
 			switch node.GetType() {
 
@@ -108,9 +109,9 @@ func echonet_mqtt() {
 			}
 
 		case msg := <-recv_mqtt:
+			log.Printf("recv_mqtt: %+v\n", msg)
 			topic := strings.Split(msg[0], "/")
 			payload := msg[1]
-			log.Printf("recv: %+v: %s\n", topic, payload)
 
 			node := echonet.FindNode(topic[0], topic[1])
 			if node == nil {

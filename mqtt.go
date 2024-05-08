@@ -41,7 +41,6 @@ func (mqtt *MqttClient) Subscribe(topic string) error {
 }
 
 func (mqtt *MqttClient) Send(topic string, payload string) {
-	//fmt.Printf("send %s: %s\n", topic, payload)
 	t := mqtt.client.Publish(topic, 0, true, payload)
 	t.Wait()
 }

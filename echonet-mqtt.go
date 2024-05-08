@@ -61,12 +61,6 @@ func echonet_mqtt() {
 		log.Fatalf("%s", err)
 	}
 
-	err = echonet.StateAll()
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-	time.Sleep(1 * time.Second)
-
 	if false {
 		//echonet.SendAnnounce()
 		//time.Sleep(3 * time.Second)
@@ -76,6 +70,17 @@ func echonet_mqtt() {
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
+
+	// status update
+	go func() {
+		for {
+			err = echonet.StateAll()
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
+			time.Sleep(60 * time.Second)
+		}
+	}()
 
 	for _, node := range echonet.NodeList() {
 		topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
@@ -142,8 +147,8 @@ func echonet_mqtt() {
 				node.State()
 			}
 
-		case <-time.After(60 * time.Second):
-			echonet.StateAll()
+			//case <-time.After(60 * time.Second):
+			//echonet.StateAll()
 		}
 
 	}

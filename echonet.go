@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,7 @@ const (
 
 var (
 	recv_echonet = make(chan *EchonetNode, 32)
+	send_mutex   sync.Mutex
 )
 
 type EchonetNode struct {
@@ -171,11 +173,15 @@ func (node *EchonetNode) sendPacket(pkt *EchonetPacket) error {
 	pkt.SetTid(node.tid)
 	node.tid += 1
 
+	send_mutex.Lock()
+
 	_, err := node.conn.Write(pkt.Bytes())
 	if err != nil {
 		return fmt.Errorf("send failed: %s", err)
 	}
 	time.Sleep(500 * time.Millisecond)
+
+	send_mutex.Unlock()
 	return nil
 }
 

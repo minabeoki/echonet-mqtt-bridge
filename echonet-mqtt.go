@@ -132,6 +132,7 @@ func echonet_mqtt() {
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}
+				node.State()
 
 			case "aircon":
 				switch topic[2] {
@@ -143,6 +144,7 @@ func echonet_mqtt() {
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}
+				node.State()
 			}
 		}
 	}

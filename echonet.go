@@ -65,7 +65,7 @@ func (en *Echonet) SendAnnounce() {
 	if err != nil {
 		panic(err)
 	}
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(250 * time.Millisecond)
 }
 
 func (en *Echonet) StartReceiver() error {
@@ -189,7 +189,7 @@ func (node *EchonetNode) SetPower(pow string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
-	pkt.SetEsv(ESV_SETGET)
+	pkt.SetEsv(ESV_SETI)
 	if pow == "on" {
 		pkt.AddProperty1(EPC_POWER, 0x30) // power on
 	} else {
@@ -209,7 +209,7 @@ func (node *EchonetNode) SetMode(mode string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
-	pkt.SetEsv(ESV_SETGET)
+	pkt.SetEsv(ESV_SETI)
 
 	switch mode {
 	case "off":
@@ -263,7 +263,7 @@ func (node *EchonetNode) SetTargetTemp(temp int) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
-	pkt.SetEsv(ESV_SETGET)
+	pkt.SetEsv(ESV_SETI)
 	pkt.AddProperty1(EPC_TARGET_TEMP, byte(temp))
 	return node.sendPacket(pkt)
 }

@@ -179,6 +179,7 @@ func (node *EchonetNode) sendPacket(pkt *EchonetPacket) error {
 	if err != nil {
 		return fmt.Errorf("send failed: %s", err)
 	}
+	log.Printf("Send: %s %s\n", node.conn.LocalAddr().String(), pkt.String())
 	time.Sleep(500 * time.Millisecond)
 
 	send_mutex.Unlock()

@@ -189,7 +189,7 @@ func (node *EchonetNode) SetPower(pow string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
-	pkt.SetEsv(ESV_SETI)
+	pkt.SetEsv(ESV_SETC)
 	if pow == "on" {
 		pkt.AddProperty1(EPC_POWER, 0x30) // power on
 	} else {
@@ -209,7 +209,7 @@ func (node *EchonetNode) SetMode(mode string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
-	pkt.SetEsv(ESV_SETI)
+	pkt.SetEsv(ESV_SETC)
 
 	switch mode {
 	case "off":
@@ -263,7 +263,7 @@ func (node *EchonetNode) SetTargetTemp(temp int) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
-	pkt.SetEsv(ESV_SETI)
+	pkt.SetEsv(ESV_SETC)
 	pkt.AddProperty1(EPC_TARGET_TEMP, byte(temp))
 	return node.sendPacket(pkt)
 }
@@ -327,7 +327,8 @@ func (node *EchonetNode) State() error {
 }
 
 func (node *EchonetNode) Handler(pkt *EchonetPacket) {
-	if pkt.ESV == ESV_GET_RES {
+	if pkt.ESV == ESV_GET_RES || pkt.ESV == ESV_SET_RES ||
+		pkt.ESV == ESV_SETGET_RES {
 		for _, prop := range pkt.Props {
 			switch prop.EPC {
 			case EPC_POWER:

@@ -97,7 +97,7 @@ func echonet_mqtt() {
 		select {
 
 		case node := <-recv_echonet:
-			log.Printf("recv_echonet: %+v\n", node)
+			//log.Printf("recv_echonet: %+v\n", node)
 			topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
 			switch node.GetType() {
 
@@ -132,7 +132,6 @@ func echonet_mqtt() {
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}
-				node.State()
 
 			case "aircon":
 				switch topic[2] {
@@ -144,13 +143,8 @@ func echonet_mqtt() {
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}
-				node.State()
 			}
-
-			//case <-time.After(60 * time.Second):
-			//echonet.StateAll()
 		}
-
 	}
 }
 

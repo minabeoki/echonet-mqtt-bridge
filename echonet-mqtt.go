@@ -93,6 +93,8 @@ func echonet_mqtt() {
 		}
 	}
 
+	var update_nodes []*EchonetNode
+
 	for {
 		select {
 
@@ -132,7 +134,7 @@ func echonet_mqtt() {
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}
-				node.State()
+				update_nodes = append(update_nodes, node)
 
 			case "aircon":
 				switch topic[2] {
@@ -144,8 +146,14 @@ func echonet_mqtt() {
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}
+				update_nodes = append(update_nodes, node)
+			}
+
+		case <- time.After(1 * time.Second):
+			for _, node := range update_nodes {
 				node.State()
 			}
+			update_nodes = nil
 		}
 	}
 }

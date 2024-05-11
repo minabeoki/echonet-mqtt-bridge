@@ -78,7 +78,7 @@ func echonet_mqtt() {
 			if err != nil {
 				log.Fatalf("%s", err)
 			}
-			time.Sleep(180 * time.Second)
+			time.Sleep(60 * time.Second)
 		}
 	}()
 
@@ -149,7 +149,7 @@ func echonet_mqtt() {
 				update_nodes = append(update_nodes, node)
 			}
 
-		case <-time.After(1 * time.Second):
+		case <- time.After(1 * time.Second):
 			for _, node := range update_nodes {
 				node.State()
 			}

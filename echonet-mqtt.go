@@ -62,8 +62,8 @@ func echonet_mqtt() {
 	}
 
 	if false {
-		//echonet.SendAnnounce()
-		//time.Sleep(3 * time.Second)
+		echonet.SendAnnounce()
+		time.Sleep(3 * time.Second)
 	}
 
 	mqtt, err := NewMqtt(cfg.Broker)
@@ -149,7 +149,7 @@ func echonet_mqtt() {
 				update_nodes = append(update_nodes, node)
 			}
 
-		case <- time.After(1 * time.Second):
+		case <-time.After(1 * time.Second):
 			for _, node := range update_nodes {
 				node.State()
 			}

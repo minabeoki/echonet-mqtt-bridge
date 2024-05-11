@@ -68,38 +68,57 @@ func (en *Echonet) SendAnnounce() {
 	time.Sleep(250 * time.Millisecond)
 }
 
-func (en *Echonet) StartReceiver() error {
-	udpAddr := &net.UDPAddr{
-		IP:   net.ParseIP("localhost"),
-		Port: ECHONET_PORT,
+func (en *Echonet) receiver(conn *net.UDPConn) {
+	defer conn.Close()
+
+	for {
+		buf := make([]byte, 1500)
+		length, addr, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			panic(err)
+		}
+
+		recv_pkt := NewEchonetPacket()
+		recv_pkt.Parse(buf[:length])
+		log.Printf("Received: %+v %s\n", addr.IP, recv_pkt.String())
+
+		for _, node := range en.Nodes {
+			if node.addr.IP.Equal(addr.IP) &&
+				node.GetEoj() == recv_pkt.GetSeoj() {
+				node.Handler(recv_pkt)
+			}
+		}
 	}
-	conn_recv, err := net.ListenUDP("udp", udpAddr)
+}
+
+func (en *Echonet) StartReceiver() error {
+	// unicast
+
+	localAddr, err := net.ResolveUDPAddr("udp4",
+		net.JoinHostPort("localhost", strconv.Itoa(ECHONET_PORT)))
+	if err != nil {
+		return err
+	}
+	conn_unicast, err := net.ListenUDP("udp", localAddr)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		defer conn_recv.Close()
+	go en.receiver(conn_unicast)
 
-		for {
-			buf := make([]byte, 1500)
-			length, addr, err := conn_recv.ReadFromUDP(buf)
-			if err != nil {
-				panic(err)
-			}
+	// multicast
 
-			recv_pkt := NewEchonetPacket()
-			recv_pkt.Parse(buf[:length])
-			log.Printf("Received: %+v %s\n", addr.IP, recv_pkt.String())
+	multiAddr, err := net.ResolveUDPAddr("udp4",
+		net.JoinHostPort(ECHONET_MULTICAST, strconv.Itoa(ECHONET_PORT)))
+	if err != nil {
+		return err
+	}
+	conn_multicast, err := net.ListenMulticastUDP("udp", nil, multiAddr)
+	if err != nil {
+		return err
+	}
 
-			for _, node := range en.Nodes {
-				if node.addr.IP.Equal(addr.IP) &&
-					node.GetEoj() == recv_pkt.GetSeoj() {
-					node.Handler(recv_pkt)
-				}
-			}
-		}
-	}()
+	go en.receiver(conn_multicast)
 
 	return nil
 }
@@ -328,7 +347,8 @@ func (node *EchonetNode) State() error {
 }
 
 func (node *EchonetNode) Handler(pkt *EchonetPacket) {
-	if pkt.ESV == ESV_GET_RES || pkt.ESV == ESV_SETGET_RES {
+	if pkt.ESV == ESV_GET_RES || pkt.ESV == ESV_SETGET_RES ||
+		pkt.ESV == ESV_INF {
 		for _, prop := range pkt.Props {
 			switch prop.EPC {
 			case EPC_POWER:

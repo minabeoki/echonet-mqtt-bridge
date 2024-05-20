@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"golang.org/x/net/ipv4"
 )
 
 const (
@@ -40,7 +42,8 @@ type EchonetNode struct {
 
 type Echonet struct {
 	Nodes      []*EchonetNode
-	conn_multi *net.UDPConn
+	mconn_send *net.UDPConn
+	mconn_recv *ipv4.PacketConn
 }
 
 func NewEchonet() (*Echonet, error) {
@@ -50,13 +53,19 @@ func NewEchonet() (*Echonet, error) {
 		return nil, err
 	}
 
-	conn, err := net.DialUDP("udp4", nil, udpAddr)
+	conn_send, err := net.DialUDP("udp4", nil, udpAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	conn_recv, err := multicastSocket(ECHONET_MULTICAST, ECHONET_PORT)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Echonet{
-		conn_multi: conn,
+		mconn_send: conn_send,
+		mconn_recv: conn_recv,
 	}, nil
 }
 
@@ -67,29 +76,30 @@ func (en *Echonet) SendAnnounce() {
 	pkt.SetEsv(ESV_GET)
 	pkt.AddProperty0(0xd6) // instalce list
 
-	_, err := en.conn_multi.Write(pkt.Bytes())
+	_, err := en.mconn_send.Write(pkt.Bytes())
 	if err != nil {
 		panic(err)
 	}
 	time.Sleep(250 * time.Millisecond)
 }
 
-func (en *Echonet) receiver(conn *net.UDPConn) {
+func (en *Echonet) receiver(conn *ipv4.PacketConn) {
 	defer conn.Close()
 
 	for {
 		buf := make([]byte, 1500)
-		length, addr, err := conn.ReadFromUDP(buf)
+		length, cm, addr, err := conn.ReadFrom(buf)
 		if err != nil {
 			panic(err)
 		}
 
 		recv_pkt := NewEchonetPacket()
 		recv_pkt.Parse(buf[:length])
-		log.Printf("Received: %+v %s\n", addr.IP, recv_pkt.String())
+		src, _, _ := net.SplitHostPort(addr.String())
+		log.Printf("Recv: %+v => %+v %s\n", src, cm.Dst, recv_pkt.String())
 
 		for _, node := range en.Nodes {
-			if node.addr.IP.Equal(addr.IP) &&
+			if node.addr.IP.String() == src &&
 				node.GetEoj() == recv_pkt.GetSeoj() {
 				node.Handler(recv_pkt)
 			}
@@ -98,29 +108,19 @@ func (en *Echonet) receiver(conn *net.UDPConn) {
 }
 
 func (en *Echonet) StartReceiver() error {
-	udpAddr := &net.UDPAddr{
-		IP:   net.ParseIP("localhost"),
-		Port: ECHONET_PORT,
-	}
-	conn_recv, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return err
-	}
-
-	go en.receiver(conn_recv)
+	go en.receiver(en.mconn_recv)
 
 	return nil
 }
 
 func (en *Echonet) NewNode(cfg Object) (*EchonetNode, error) {
-	addr_port := fmt.Sprintf("%s:%d", cfg.Addr, ECHONET_PORT)
-
-	conn, err := net.Dial("udp4", addr_port)
+	udpAddr, err := net.ResolveUDPAddr("udp4",
+		net.JoinHostPort(cfg.Addr, strconv.Itoa(ECHONET_PORT)))
 	if err != nil {
 		return nil, err
 	}
 
-	udpaddr, err := net.ResolveUDPAddr("udp4", addr_port)
+	conn_send, err := net.DialUDP("udp4", nil, udpAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +131,8 @@ func (en *Echonet) NewNode(cfg Object) (*EchonetNode, error) {
 	}
 
 	node := EchonetNode{
-		addr: udpaddr,
-		conn: conn,
+		addr: udpAddr,
+		conn: conn_send,
 		tid:  1,
 		eoj:  uint32(eoj),
 		cfg:  cfg,
@@ -187,7 +187,8 @@ func (node *EchonetNode) sendPacket(pkt *EchonetPacket) error {
 	if err != nil {
 		return fmt.Errorf("send failed: %s", err)
 	}
-	log.Printf("Send: %s %s\n", node.conn.LocalAddr().String(), pkt.String())
+	dst, _, _ := net.SplitHostPort(node.conn.RemoteAddr().String())
+	log.Printf("Send: %s %s\n", dst, pkt.String())
 	time.Sleep(500 * time.Millisecond)
 
 	send_mutex.Unlock()

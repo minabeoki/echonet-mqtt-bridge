@@ -3,13 +3,19 @@ package main
 import "fmt"
 
 const (
-	ESV_SETI       = 0x60
-	ESV_SETC       = 0x61
-	ESV_GET        = 0x62
+	ESV_SETI_SNA   = 0x50 // deny ESV=0x60
+	ESV_SETC_SNA   = 0x51 // deny ESV=0x61
+	ESV_GET_SNA    = 0x52 // deny ESV=0x62
+	ESV_INF_SNA    = 0x53 // deny ESV=0x63
+	ESV_SETGET_SNA = 0x5e // deny ESV=0x6e
+
+	ESV_SETI       = 0x60 // set w/o response
+	ESV_SETC       = 0x61 // set with response
+	ESV_GET        = 0x62 // get
 	ESV_INF_REQ    = 0x63
 	ESV_SETGET     = 0x6e
-	ESV_SET_RES    = 0x71
-	ESV_GET_RES    = 0x72
+	ESV_SET_RES    = 0x71 // response ESV=0x61
+	ESV_GET_RES    = 0x72 // response ESV=0x62
 	ESV_INF        = 0x73
 	ESV_INFC       = 0x74
 	ESV_INFC_RES   = 0x7a
@@ -77,7 +83,7 @@ func (pkt *EchonetPacket) Bytes() []byte {
 }
 
 func (pkt *EchonetPacket) String() string {
-	s := fmt.Sprintf("EOJ:%06x TID:%d ", pkt.SEOJ, pkt.TID)
+	s := fmt.Sprintf("EOJ:%06x=>%06x TID:%d ", pkt.SEOJ, pkt.DEOJ, pkt.TID)
 
 	switch pkt.ESV {
 	case ESV_SETI:
@@ -102,6 +108,16 @@ func (pkt *EchonetPacket) String() string {
 		s += "INFC_Res" // response for INFC(0x74)
 	case ESV_SETGET_RES:
 		s += "SetGet_Res" // response for SetGet(0x6e)
+	case ESV_SETI_SNA:
+		s += "SetI_SNA"
+	case ESV_SETC_SNA:
+		s += "SetC_SNA"
+	case ESV_GET_SNA:
+		s += "Get_SNA"
+	case ESV_INF_SNA:
+		s += "INF_SNA"
+	case ESV_SETGET_SNA:
+		s += "SetGet_SNA"
 	default:
 		s += fmt.Sprintf("0x%02x", pkt.ESV)
 	}

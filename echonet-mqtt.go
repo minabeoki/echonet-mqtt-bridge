@@ -78,7 +78,7 @@ func echonet_mqtt() {
 			if err != nil {
 				log.Fatalf("%s", err)
 			}
-			time.Sleep(60 * time.Second)
+			time.Sleep(180 * time.Second)
 		}
 	}()
 
@@ -134,7 +134,7 @@ func echonet_mqtt() {
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}
-				update_nodes = append(update_nodes, node)
+				//update_nodes = append(update_nodes, node)
 
 			case "aircon":
 				switch topic[2] {

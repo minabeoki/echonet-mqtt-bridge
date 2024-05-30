@@ -189,7 +189,7 @@ func (node *EchonetNode) sendPacket(pkt *EchonetPacket) error {
 	}
 	dst, _, _ := net.SplitHostPort(node.conn.RemoteAddr().String())
 	log.Printf("Send: %s %s\n", dst, pkt.String())
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(600 * time.Millisecond)
 
 	send_mutex.Unlock()
 	return nil

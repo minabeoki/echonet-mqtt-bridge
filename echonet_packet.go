@@ -30,6 +30,12 @@ const (
 	EPC_ROOM_HUMIDITY   = 0xba
 	EPC_ROOM_TEMP       = 0xbb
 	EPC_OUTDOOR_TEMP    = 0xbe
+	EPC_HUMIDIFY        = 0xc1
+	EPC_HUMIDIFY_LEVEL  = 0xc4
+
+	EDT_ON   = 0x30
+	EDT_OFF  = 0x31
+	EDT_AUTO = 0x41
 )
 
 type EchonetProperty struct {

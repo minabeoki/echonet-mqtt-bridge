@@ -223,30 +223,30 @@ func (node *EchonetNode) SetMode(mode string) error {
 
 	switch mode {
 	case "off":
-		pkt.AddProperty1(EPC_POWER, 0x31) // power off
+		pkt.AddProperty1(EPC_POWER, EDT_OFF) // power off
 	case "auto":
-		pkt.AddProperty1(EPC_POWER, 0x30) // power on
-		pkt.AddProperty1(EPC_MODE, 0x41)  // auto mode
-		pkt.AddProperty1(EPC_FAN, 0x41)   // fan auto
-		pkt.AddProperty1(EPC_SWING, 0x42) // swing horizontal
+		pkt.AddProperty1(EPC_POWER, EDT_ON)  // power on
+		pkt.AddProperty1(EPC_MODE, EDT_AUTO) // auto mode
+		pkt.AddProperty1(EPC_FAN, EDT_AUTO)  // fan auto
+		pkt.AddProperty1(EPC_SWING, 0x42)    // swing horizontal
 	case "cool":
-		pkt.AddProperty1(EPC_POWER, 0x30) // power on
-		pkt.AddProperty1(EPC_MODE, 0x42)  // cool mode
-		pkt.AddProperty1(EPC_FAN, 0x41)   // fan auto
-		pkt.AddProperty1(EPC_SWING, 0x42) // swing horizontal
+		pkt.AddProperty1(EPC_POWER, EDT_ON) // power on
+		pkt.AddProperty1(EPC_MODE, 0x42)    // cool mode
+		pkt.AddProperty1(EPC_FAN, EDT_AUTO) // fan auto
+		pkt.AddProperty1(EPC_SWING, 0x42)   // swing horizontal
 	case "heat":
-		pkt.AddProperty1(EPC_POWER, 0x30) // power on
-		pkt.AddProperty1(EPC_MODE, 0x43)  // heat mode
-		pkt.AddProperty1(EPC_FAN, 0x41)   // fan auto
-		pkt.AddProperty1(EPC_SWING, 0x42) // swing horizontal
-		pkt.AddProperty1(0xc1, 0x41)      // humidification on
-		pkt.AddProperty1(0xc4, 0x41)      // humidification auto
+		pkt.AddProperty1(EPC_POWER, EDT_ON)            // power on
+		pkt.AddProperty1(EPC_MODE, 0x43)               // heat mode
+		pkt.AddProperty1(EPC_FAN, EDT_AUTO)            // fan auto
+		pkt.AddProperty1(EPC_SWING, 0x42)              // swing horizontal
+		pkt.AddProperty1(EPC_HUMIDIFY, EDT_AUTO)       // humidification on
+		pkt.AddProperty1(EPC_HUMIDIFY_LEVEL, EDT_AUTO) // humidification auto
 	case "dry":
-		pkt.AddProperty1(EPC_POWER, 0x30) // power on
-		pkt.AddProperty1(EPC_MODE, 0x44)  // dry mode
+		pkt.AddProperty1(EPC_POWER, EDT_ON) // power on
+		pkt.AddProperty1(EPC_MODE, 0x44)    // dry mode
 	case "fan":
-		pkt.AddProperty1(EPC_POWER, 0x30) // power on
-		pkt.AddProperty1(EPC_MODE, 0x45)  // fan mode
+		pkt.AddProperty1(EPC_POWER, EDT_ON) // power on
+		pkt.AddProperty1(EPC_MODE, 0x45)    // fan mode
 	default:
 		return fmt.Errorf("invalid mode: %s", mode)
 	}

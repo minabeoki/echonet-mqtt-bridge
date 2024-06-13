@@ -286,6 +286,23 @@ func (node *EchonetNode) GetTargetTemp() (temp int) {
 	return node.target_temp
 }
 
+func (node *EchonetNode) SetTargetHumidity(humi int) error {
+	if humi < 0 || humi > 100 {
+		return fmt.Errorf("invalid humidity %d", humi)
+	}
+
+	pkt := NewEchonetPacket()
+	pkt.SetSeoj(ECHONET_EOJ_NODE)
+	pkt.SetDeoj(node.eoj)
+	pkt.SetEsv(ESV_SETI)
+	pkt.AddProperty1(EPC_TARGET_HUMIDITY, byte(humi))
+	return node.sendPacket(pkt)
+}
+
+func (node *EchonetNode) GetTargetHumidity() (temp int) {
+	return node.target_humidity
+}
+
 func (node *EchonetNode) GetRoomTemp() int {
 	return node.room_temp
 }

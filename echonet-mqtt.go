@@ -78,7 +78,7 @@ func echonet_mqtt() {
 			if err != nil {
 				log.Fatalf("%s", err)
 			}
-			time.Sleep(180 * time.Second)
+			time.Sleep(300 * time.Second)
 		}
 	}()
 
@@ -90,6 +90,7 @@ func echonet_mqtt() {
 		case "aircon":
 			mqtt.Subscribe(topic + "/mode/set")
 			mqtt.Subscribe(topic + "/temperature/set")
+			mqtt.Subscribe(topic + "/humidity/set")
 		}
 	}
 
@@ -112,6 +113,10 @@ func echonet_mqtt() {
 					strconv.Itoa(node.GetTargetTemp()))
 				mqtt.Send("sensor/"+topic+"/temperature",
 					strconv.Itoa(node.GetRoomTemp()))
+				mqtt.Send(topic+"/humidity",
+					strconv.Itoa(node.GetTargetHumidity()))
+				mqtt.Send("sensor/"+topic+"/humidity",
+					strconv.Itoa(node.GetRoomHumidfy()))
 
 			}
 
@@ -143,6 +148,9 @@ func echonet_mqtt() {
 				case "temperature":
 					temp, _ := strconv.Atoi(payload)
 					node.SetTargetTemp(temp)
+				case "humidity":
+					humi, _ := strconv.Atoi(payload)
+					node.SetTargetHumidity(humi)
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}

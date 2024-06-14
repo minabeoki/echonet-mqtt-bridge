@@ -189,7 +189,7 @@ func (node *EchonetNode) sendPacket(pkt *EchonetPacket) error {
 	}
 	dst, _, _ := net.SplitHostPort(node.conn.RemoteAddr().String())
 	log.Printf("Send: %s %s\n", dst, pkt.String())
-	time.Sleep(600 * time.Millisecond)
+	time.Sleep(700 * time.Millisecond)
 
 	send_mutex.Unlock()
 	return nil
@@ -228,17 +228,17 @@ func (node *EchonetNode) SetMode(mode string) error {
 		pkt.AddProperty1(EPC_POWER, EDT_ON)  // power on
 		pkt.AddProperty1(EPC_MODE, EDT_AUTO) // auto mode
 		pkt.AddProperty1(EPC_FAN, EDT_AUTO)  // fan auto
-		pkt.AddProperty1(EPC_SWING, 0x42)    // swing horizontal
+		//pkt.AddProperty1(EPC_SWING, 0x42)    // swing horizontal
 	case "cool":
 		pkt.AddProperty1(EPC_POWER, EDT_ON) // power on
 		pkt.AddProperty1(EPC_MODE, 0x42)    // cool mode
 		pkt.AddProperty1(EPC_FAN, EDT_AUTO) // fan auto
-		pkt.AddProperty1(EPC_SWING, 0x42)   // swing horizontal
+		//pkt.AddProperty1(EPC_SWING, 0x42)   // swing horizontal
 	case "heat":
 		pkt.AddProperty1(EPC_POWER, EDT_ON)            // power on
 		pkt.AddProperty1(EPC_MODE, 0x43)               // heat mode
 		pkt.AddProperty1(EPC_FAN, EDT_AUTO)            // fan auto
-		pkt.AddProperty1(EPC_SWING, 0x42)              // swing horizontal
+		//pkt.AddProperty1(EPC_SWING, 0x42)              // swing horizontal
 		pkt.AddProperty1(EPC_HUMIDIFY, EDT_AUTO)       // humidification on
 		pkt.AddProperty1(EPC_HUMIDIFY_LEVEL, EDT_AUTO) // humidification auto
 	case "dry":

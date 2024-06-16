@@ -148,11 +148,11 @@ func echonet_mqtt() {
 				case "mode":
 					node.SetMode(payload)
 				case "temperature":
-					temp, _ := strconv.Atoi(payload)
-					node.SetTargetTemp(temp)
+					temp, _ := strconv.ParseFloat(payload, 32)
+					node.SetTargetTemp(int(temp))
 				case "humidity":
-					humi, _ := strconv.Atoi(payload)
-					node.SetTargetHumidity(humi)
+					humi, _ := strconv.ParseFloat(payload, 32)
+					node.SetTargetHumidity(int(humi))
 				default:
 					log.Fatalf("invalid topic: %s", msg[0])
 				}

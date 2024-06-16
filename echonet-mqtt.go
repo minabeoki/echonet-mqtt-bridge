@@ -113,6 +113,8 @@ func echonet_mqtt() {
 					strconv.Itoa(node.GetTargetTemp()))
 				mqtt.Send("sensor/"+topic+"/temperature",
 					strconv.Itoa(node.GetRoomTemp()))
+				mqtt.Send("sensor/"+topic+"/outtemp",
+					strconv.Itoa(node.GetOutdoorTemp()))
 				mqtt.Send(topic+"/humidity",
 					strconv.Itoa(node.GetTargetHumidity()))
 				mqtt.Send("sensor/"+topic+"/humidity",

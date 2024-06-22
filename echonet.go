@@ -72,9 +72,9 @@ func NewEchonet() (*Echonet, error) {
 func (en *Echonet) SendAnnounce() {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(0x0ef001)
+	pkt.SetDeoj(ECHONET_EOJ_NODE)
 	pkt.SetEsv(ESV_GET)
-	pkt.AddProperty0(0xd6) // instalce list
+	pkt.AddProperty(EPC_NODE_INS_LIST) // instalce list
 
 	_, err := en.mconn_send.Write(pkt.Bytes())
 	if err != nil {
@@ -201,9 +201,9 @@ func (node *EchonetNode) SetPower(pow string) error {
 	pkt.SetDeoj(node.eoj)
 	pkt.SetEsv(ESV_SETI)
 	if pow == "on" {
-		pkt.AddProperty1(EPC_POWER, 0x30) // power on
+		pkt.AddProperty(EPC_POWER, EDT_ON) // power on
 	} else {
-		pkt.AddProperty1(EPC_POWER, 0x31) // power off
+		pkt.AddProperty(EPC_POWER, EDT_OFF) // power off
 	}
 	return node.sendPacket(pkt)
 }
@@ -223,30 +223,27 @@ func (node *EchonetNode) SetMode(mode string) error {
 
 	switch mode {
 	case "off":
-		pkt.AddProperty1(EPC_POWER, EDT_OFF) // power off
+		pkt.AddProperty(EPC_POWER, EDT_OFF) // power off
 	case "auto":
-		pkt.AddProperty1(EPC_POWER, EDT_ON)  // power on
-		pkt.AddProperty1(EPC_MODE, EDT_AUTO) // auto mode
-		pkt.AddProperty1(EPC_FAN, EDT_AUTO)  // fan auto
-		//pkt.AddProperty1(EPC_SWING, 0x42)    // swing horizontal
+		pkt.AddProperty(EPC_POWER, EDT_ON)  // power on
+		pkt.AddProperty(EPC_MODE, EDT_AUTO) // auto mode
+		pkt.AddProperty(EPC_FAN, EDT_AUTO)  // fan auto
 	case "cool":
-		pkt.AddProperty1(EPC_POWER, EDT_ON) // power on
-		pkt.AddProperty1(EPC_MODE, 0x42)    // cool mode
-		pkt.AddProperty1(EPC_FAN, EDT_AUTO) // fan auto
-		//pkt.AddProperty1(EPC_SWING, 0x42)   // swing horizontal
+		pkt.AddProperty(EPC_POWER, EDT_ON) // power on
+		pkt.AddProperty(EPC_MODE, 0x42)    // cool mode
+		pkt.AddProperty(EPC_FAN, EDT_AUTO) // fan auto
 	case "heat":
-		pkt.AddProperty1(EPC_POWER, EDT_ON)            // power on
-		pkt.AddProperty1(EPC_MODE, 0x43)               // heat mode
-		pkt.AddProperty1(EPC_FAN, EDT_AUTO)            // fan auto
-		//pkt.AddProperty1(EPC_SWING, 0x42)              // swing horizontal
-		pkt.AddProperty1(EPC_HUMIDIFY, EDT_AUTO)       // humidification on
-		pkt.AddProperty1(EPC_HUMIDIFY_LEVEL, EDT_AUTO) // humidification auto
+		pkt.AddProperty(EPC_POWER, EDT_ON)            // power on
+		pkt.AddProperty(EPC_MODE, 0x43)               // heat mode
+		pkt.AddProperty(EPC_FAN, EDT_AUTO)            // fan auto
+		pkt.AddProperty(EPC_HUMIDIFY, EDT_AUTO)       // humidification on
+		pkt.AddProperty(EPC_HUMIDIFY_LEVEL, EDT_AUTO) // humidification auto
 	case "dry":
-		pkt.AddProperty1(EPC_POWER, EDT_ON) // power on
-		pkt.AddProperty1(EPC_MODE, 0x44)    // dry mode
+		pkt.AddProperty(EPC_POWER, EDT_ON) // power on
+		pkt.AddProperty(EPC_MODE, 0x44)    // dry mode
 	case "fan":
-		pkt.AddProperty1(EPC_POWER, EDT_ON) // power on
-		pkt.AddProperty1(EPC_MODE, 0x45)    // fan mode
+		pkt.AddProperty(EPC_POWER, EDT_ON) // power on
+		pkt.AddProperty(EPC_MODE, 0x45)    // fan mode
 	default:
 		return fmt.Errorf("invalid mode: %s", mode)
 	}
@@ -274,7 +271,7 @@ func (node *EchonetNode) SetTargetTemp(temp int) error {
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
 	pkt.SetEsv(ESV_SETI)
-	pkt.AddProperty1(EPC_TARGET_TEMP, byte(temp))
+	pkt.AddProperty(EPC_TARGET_TEMP, byte(temp))
 	return node.sendPacket(pkt)
 }
 
@@ -295,7 +292,7 @@ func (node *EchonetNode) SetTargetHumidity(humi int) error {
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
 	pkt.SetEsv(ESV_SETI)
-	pkt.AddProperty1(EPC_TARGET_HUMIDITY, byte(humi))
+	pkt.AddProperty(EPC_TARGET_HUMIDITY, byte(humi))
 	return node.sendPacket(pkt)
 }
 
@@ -320,10 +317,9 @@ func (node *EchonetNode) Property() error {
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
 	pkt.SetDeoj(node.eoj)
 	pkt.SetEsv(ESV_GET)
-	pkt.AddProperty0(0x83) // device identify
-	pkt.AddProperty0(0x9d) // announce map
-	pkt.AddProperty0(0x9e) // set map
-	pkt.AddProperty0(0x9f) // get map
+	pkt.AddProperty(EPC_INF_PROPMAP) // announce map
+	pkt.AddProperty(EPC_SET_PROPMAP) // set map
+	pkt.AddProperty(EPC_GET_PROPMAP) // get map
 	return node.sendPacket(pkt)
 }
 
@@ -335,17 +331,17 @@ func (node *EchonetNode) State() error {
 
 	switch node.cfg.Type {
 	case "aircon":
-		pkt.AddProperty0(0x80) // power
-		pkt.AddProperty0(0xb0) // mode
-		pkt.AddProperty0(0xb3) // target temp
-		pkt.AddProperty0(0xb4) // target humidity
-		pkt.AddProperty0(0xba) // room humidity
-		pkt.AddProperty0(0xbb) // room temp
-		pkt.AddProperty0(0xbe) // outdoor temp
-		pkt.AddProperty0(0xa0) // fan
-		pkt.AddProperty0(0xa3) // swing
+		pkt.AddProperty(EPC_POWER)           // power
+		pkt.AddProperty(EPC_MODE)            // mode
+		pkt.AddProperty(EPC_TARGET_TEMP)     // target temp
+		pkt.AddProperty(EPC_TARGET_HUMIDITY) // target humidity
+		pkt.AddProperty(EPC_ROOM_HUMIDITY)   // room humidity
+		pkt.AddProperty(EPC_ROOM_TEMP)       // room temp
+		pkt.AddProperty(EPC_OUTDOOR_TEMP)    // outdoor temp
+		pkt.AddProperty(EPC_FAN)             // fan
+		pkt.AddProperty(EPC_SWING)           // swing
 	case "light":
-		pkt.AddProperty0(0x80) // power
+		pkt.AddProperty(EPC_POWER) // power
 	default:
 		return fmt.Errorf("invalid type: %s", node.cfg.Type)
 	}
@@ -359,7 +355,7 @@ func (node *EchonetNode) Handler(pkt *EchonetPacket) {
 		for _, prop := range pkt.Props {
 			switch prop.EPC {
 			case EPC_POWER:
-				node.power = prop.EDT[0] == 0x30
+				node.power = prop.EDT[0] == EDT_ON
 			case EPC_MODE:
 				switch prop.EDT[0] {
 				case 0x41:

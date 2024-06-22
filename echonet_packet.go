@@ -33,6 +33,15 @@ const (
 	EPC_HUMIDIFY        = 0xc1
 	EPC_HUMIDIFY_LEVEL  = 0xc4
 
+	EPC_INF_PROPMAP     = 0x9d
+	EPC_SET_PROPMAP     = 0x9e
+	EPC_GET_PROPMAP     = 0x9f
+	EPC_NODE_INS_NUM    = 0xd3
+	EPC_NODE_CLASS_NUM  = 0xd4
+	EPC_NODE_INS_INF    = 0xd5
+	EPC_NODE_INS_LIST   = 0xd6
+	EPC_NODE_CLASS_LIST = 0xd7
+
 	EDT_ON   = 0x30
 	EDT_OFF  = 0x31
 	EDT_AUTO = 0x41
@@ -220,19 +229,11 @@ func (pkt *EchonetPacket) GetEsv() byte {
 	return pkt.ESV
 }
 
-func (pkt *EchonetPacket) AddProperty(epc byte, edt []byte) {
+func (pkt *EchonetPacket) AddProperty(epc byte, edt ...byte) {
 	pkt.OPC += 1
 	pkt.Props = append(pkt.Props, EchonetProperty{
 		EPC: epc,
 		PDC: byte(len(edt)),
 		EDT: edt,
 	})
-}
-
-func (pkt *EchonetPacket) AddProperty0(epc byte) {
-	pkt.AddProperty(epc, []byte{})
-}
-
-func (pkt *EchonetPacket) AddProperty1(epc byte, edt byte) {
-	pkt.AddProperty(epc, []byte{edt})
 }

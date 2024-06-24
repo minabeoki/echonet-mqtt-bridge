@@ -1,4 +1,7 @@
-package main
+/*
+ECHONET Lite
+*/
+package echonet
 
 import (
 	"fmt"
@@ -12,18 +15,18 @@ import (
 )
 
 const (
-	ECHONET_PORT       = 3610
-	ECHONET_EOJ_NODE   = 0x0ef001
-	ECHONET_EOJ_AIRCON = 0x013001
-	ECHONET_MULTICAST  = "224.0.23.0"
+	ECHONET_PORT      = 3610
+	ECHONET_EOJ_NODE  = 0x0ef001
+	ECHONET_MULTICAST = "224.0.23.0"
 )
 
 var (
-	recv_echonet = make(chan *EchonetNode, 32)
-	send_mutex   sync.Mutex
+	send_mutex sync.Mutex
 )
 
+// Echonet node
 type EchonetNode struct {
+	parent          *Echonet
 	addr            *net.UDPAddr
 	conn            net.Conn
 	power           bool
@@ -40,8 +43,18 @@ type EchonetNode struct {
 	cfg             Object
 }
 
+// Echonet object informations
+type Object struct {
+	Type string `json:"type"`
+	Name string `json:"name"`
+	Addr string `json:"addr"`
+	Eoj  string `json:"eoj"`
+}
+
+// Echonet
 type Echonet struct {
 	Nodes      []*EchonetNode
+	RecvChan   chan *EchonetNode
 	mconn_send *net.UDPConn
 	mconn_recv *ipv4.PacketConn
 }
@@ -64,6 +77,7 @@ func NewEchonet() (*Echonet, error) {
 	}
 
 	return &Echonet{
+		RecvChan:   make(chan *EchonetNode, 32),
 		mconn_send: conn_send,
 		mconn_recv: conn_recv,
 	}, nil
@@ -107,7 +121,7 @@ func (en *Echonet) receiver(conn *ipv4.PacketConn) {
 	}
 }
 
-func (en *Echonet) StartReceiver() error {
+func (en *Echonet) Start() error {
 	go en.receiver(en.mconn_recv)
 
 	return nil
@@ -131,11 +145,12 @@ func (en *Echonet) NewNode(cfg Object) (*EchonetNode, error) {
 	}
 
 	node := EchonetNode{
-		addr: udpAddr,
-		conn: conn_send,
-		tid:  1,
-		eoj:  uint32(eoj),
-		cfg:  cfg,
+		parent: en,
+		addr:   udpAddr,
+		conn:   conn_send,
+		tid:    1,
+		eoj:    uint32(eoj),
+		cfg:    cfg,
 	}
 	en.Nodes = append(en.Nodes, &node)
 
@@ -227,15 +242,12 @@ func (node *EchonetNode) SetMode(mode string) error {
 	case "auto":
 		pkt.AddProperty(EPC_POWER, EDT_ON)  // power on
 		pkt.AddProperty(EPC_MODE, EDT_AUTO) // auto mode
-		pkt.AddProperty(EPC_FAN, EDT_AUTO)  // fan auto
 	case "cool":
 		pkt.AddProperty(EPC_POWER, EDT_ON) // power on
 		pkt.AddProperty(EPC_MODE, 0x42)    // cool mode
-		pkt.AddProperty(EPC_FAN, EDT_AUTO) // fan auto
 	case "heat":
 		pkt.AddProperty(EPC_POWER, EDT_ON)            // power on
 		pkt.AddProperty(EPC_MODE, 0x43)               // heat mode
-		pkt.AddProperty(EPC_FAN, EDT_AUTO)            // fan auto
 		pkt.AddProperty(EPC_HUMIDIFY, EDT_AUTO)       // humidification on
 		pkt.AddProperty(EPC_HUMIDIFY_LEVEL, EDT_AUTO) // humidification auto
 	case "dry":
@@ -254,6 +266,78 @@ func (node *EchonetNode) SetMode(mode string) error {
 func (node *EchonetNode) GetMode() (mode string) {
 	if node.power {
 		return node.mode
+	}
+	return "off"
+}
+
+func (node *EchonetNode) SetFan(mode string) error {
+	pkt := NewEchonetPacket()
+	pkt.SetSeoj(ECHONET_EOJ_NODE)
+	pkt.SetDeoj(node.eoj)
+	pkt.SetEsv(ESV_SETI)
+
+	switch mode {
+	case "auto":
+		pkt.AddProperty(EPC_FAN, EDT_AUTO)
+	case "low":
+		pkt.AddProperty(EPC_FAN, 0x31)
+	case "medium":
+		pkt.AddProperty(EPC_FAN, 0x33)
+	case "high":
+		pkt.AddProperty(EPC_FAN, 0x35)
+	default:
+		return fmt.Errorf("invalid mode: %s", mode)
+	}
+
+	return node.sendPacket(pkt)
+}
+
+func (node *EchonetNode) GetFan() (mode string) {
+	switch node.fan {
+	case EDT_AUTO:
+		return "auto"
+	case 0x31, 0x32:
+		return "low"
+	case 0x33, 0x34:
+		return "medium"
+	case 0x35, 0x36, 0x37, 0x38:
+		return "high"
+	}
+	return "auto"
+}
+
+func (node *EchonetNode) SetSwing(mode string) error {
+	pkt := NewEchonetPacket()
+	pkt.SetSeoj(ECHONET_EOJ_NODE)
+	pkt.SetDeoj(node.eoj)
+	pkt.SetEsv(ESV_SETI)
+
+	switch mode {
+	case "off":
+		pkt.AddProperty(EPC_SWING, EDT_OFF)
+	case "ud":
+		pkt.AddProperty(EPC_FAN, 0x41) // up and down
+	case "lr":
+		pkt.AddProperty(EPC_FAN, 0x42) // left and right
+	case "on":
+		pkt.AddProperty(EPC_FAN, 0x43)
+	default:
+		return fmt.Errorf("invalid mode: %s", mode)
+	}
+
+	return node.sendPacket(pkt)
+}
+
+func (node *EchonetNode) GetSwing() (mode string) {
+	switch node.fan {
+	case EDT_OFF:
+		return "off"
+	case 0x41:
+		return "ud"
+	case 0x42:
+		return "lr"
+	case 0x43:
+		return "on"
 	}
 	return "off"
 }
@@ -395,7 +479,7 @@ func (node *EchonetNode) Handler(pkt *EchonetPacket) {
 			node.target_temp = node.room_temp
 		}
 
-		recv_echonet <- node
+		node.parent.RecvChan <- node
 		//log.Printf("Handler: %+v\n", node)
 	}
 }

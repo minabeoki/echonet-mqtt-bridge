@@ -8,26 +8,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"echonet-mqtt/echonet"
 )
 
 type Config struct {
-	Broker     string   `json:"broker"`
-	ObjectList []Object `json:"list"`
-}
-
-type Object struct {
-	Type string `json:"type"`
-	Name string `json:"name"`
-	Addr string `json:"addr"`
-	Eoj  string `json:"eoj"`
+	Broker     string           `json:"broker"`
+	ObjectList []echonet.Object `json:"list"`
 }
 
 func main() {
-	echonet_mqtt()
-	os.Exit(0)
-}
-
-func echonet_mqtt() {
 	log.SetFlags(log.Flags() | log.Lmicroseconds)
 
 	if len(os.Args) != 2 {
@@ -42,39 +32,48 @@ func echonet_mqtt() {
 	}
 	log.Printf("config: %+v\n", cfg)
 
-	echonet, err := NewEchonet()
+	err = echonet_mqtt(cfg)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
 
+	os.Exit(0)
+}
+
+func echonet_mqtt(cfg Config) error {
+	enet, err := echonet.NewEchonet()
+	if err != nil {
+		return err
+	}
+
 	for _, obj := range cfg.ObjectList {
-		node, err := echonet.NewNode(obj)
+		node, err := enet.NewNode(obj)
 		if err != nil {
-			log.Fatalf("%s", err)
+			return err
 		}
 		log.Printf("added %s:%06x %s %s\n", obj.Addr,
 			node.GetEoj(), node.GetType(), node.GetName())
 	}
 
-	err = echonet.StartReceiver()
+	err = enet.Start()
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	if false {
-		echonet.SendAnnounce()
+		enet.SendAnnounce()
 		time.Sleep(3 * time.Second)
 	}
 
 	mqtt, err := NewMqtt(cfg.Broker)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	// status update
 	go func() {
 		for {
-			err = echonet.StateAll()
+			err = enet.StateAll()
 			if err != nil {
 				log.Fatalf("%s", err)
 			}
@@ -82,7 +81,7 @@ func echonet_mqtt() {
 		}
 	}()
 
-	for _, node := range echonet.NodeList() {
+	for _, node := range enet.NodeList() {
 		topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
 		switch node.GetType() {
 		case "light":
@@ -91,15 +90,17 @@ func echonet_mqtt() {
 			mqtt.Subscribe(topic + "/mode/set")
 			mqtt.Subscribe(topic + "/temperature/set")
 			mqtt.Subscribe(topic + "/humidity/set")
+			mqtt.Subscribe(topic + "/fan/set")
+			mqtt.Subscribe(topic + "/swing/set")
 		}
 	}
 
-	var update_nodes []*EchonetNode
+	var update_nodes []*echonet.EchonetNode
 
 	for {
 		select {
 
-		case node := <-recv_echonet:
+		case node := <-enet.RecvChan:
 			//log.Printf("recv_echonet: %+v\n", node)
 			topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
 			switch node.GetType() {
@@ -119,7 +120,8 @@ func echonet_mqtt() {
 					strconv.Itoa(node.GetTargetHumidity()))
 				mqtt.Send("sensor/"+topic+"/humidity",
 					strconv.Itoa(node.GetRoomHumidfy()))
-
+				mqtt.Send(topic+"/fan", node.GetFan())
+				mqtt.Send(topic+"/swing", node.GetSwing())
 			}
 
 		case msg := <-recv_mqtt:
@@ -127,9 +129,9 @@ func echonet_mqtt() {
 			topic := strings.Split(msg[0], "/")
 			payload := msg[1]
 
-			node := echonet.FindNode(topic[0], topic[1])
+			node := enet.FindNode(topic[0], topic[1])
 			if node == nil {
-				log.Fatalf("invalid topic: %s", msg[0])
+				return fmt.Errorf("invalid topic: %s", msg[0])
 			}
 
 			switch topic[0] {
@@ -139,7 +141,7 @@ func echonet_mqtt() {
 				case "power":
 					node.SetPower(payload)
 				default:
-					log.Fatalf("invalid topic: %s", msg[0])
+					return fmt.Errorf("invalid topic: %s", msg[0])
 				}
 				//update_nodes = append(update_nodes, node)
 
@@ -153,8 +155,12 @@ func echonet_mqtt() {
 				case "humidity":
 					humi, _ := strconv.ParseFloat(payload, 32)
 					node.SetTargetHumidity(int(humi))
+				case "fan":
+					node.SetFan(payload)
+				case "swing":
+					node.SetSwing(payload)
 				default:
-					log.Fatalf("invalid topic: %s", msg[0])
+					return fmt.Errorf("invalid topic: %s", msg[0])
 				}
 				update_nodes = append(update_nodes, node)
 			}

@@ -140,19 +140,10 @@ func (pkt *EchonetPacket) String() string {
 	for _, prop := range pkt.Props {
 		s += fmt.Sprintf(" EPC:%02x", prop.EPC)
 		edt_list := prop.EDT
-		if prop.EPC == 0x9d || prop.EPC == 0x9e || prop.EPC == 0x9f {
-			if prop.PDC == 17 {
-				edt_list = []byte{}
-				for i := 0; i < 8; i++ {
-					for j := 0; j < 16; j++ {
-						if (prop.EDT[j+1] & (1 << i)) != 0 {
-							edt_list = append(edt_list, byte(0x80+i*0x10+j))
-						}
-					}
-				}
-			} else {
-				edt_list = prop.EDT[1:]
-			}
+		if prop.EPC == EPC_INF_PROPMAP ||
+			prop.EPC == EPC_SET_PROPMAP ||
+			prop.EPC == EPC_GET_PROPMAP {
+			edt_list = getPropertyMap(prop)
 		}
 
 		for _, edt := range edt_list {
@@ -181,6 +172,7 @@ func (pkt *EchonetPacket) Parse(payload []byte) error {
 	}
 
 	idx := 12
+	pkt.Props = nil
 	for i := 0; i < int(pkt.OPC); i++ {
 		prop := EchonetProperty{
 			EPC: payload[idx],
@@ -236,4 +228,24 @@ func (pkt *EchonetPacket) AddProperty(epc byte, edt ...byte) {
 		PDC: byte(len(edt)),
 		EDT: edt,
 	})
+}
+
+func getPropertyMap(prop EchonetProperty) (propmap []byte) {
+	if prop.EPC == EPC_INF_PROPMAP ||
+		prop.EPC == EPC_SET_PROPMAP ||
+		prop.EPC == EPC_GET_PROPMAP {
+		if prop.PDC == 17 {
+			propmap = []byte{}
+			for i := 0; i < 8; i++ {
+				for j := 0; j < 16; j++ {
+					if (prop.EDT[j+1] & (1 << i)) != 0 {
+						propmap = append(propmap, byte(0x80+i*0x10+j))
+					}
+				}
+			}
+		} else {
+			propmap = prop.EDT[1:]
+		}
+	}
+	return propmap
 }

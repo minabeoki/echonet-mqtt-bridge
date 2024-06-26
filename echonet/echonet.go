@@ -24,8 +24,8 @@ var (
 	send_mutex sync.Mutex
 )
 
-// Echonet node
-type EchonetNode struct {
+// Echonet object
+type EchonetObject struct {
 	parent          *Echonet
 	addr            *net.UDPAddr
 	conn            net.Conn
@@ -40,11 +40,11 @@ type EchonetNode struct {
 	swing           int
 	tid             uint16
 	eoj             uint32
-	cfg             Object
+	cfg             Config
 }
 
-// Echonet object informations
-type Object struct {
+// Echonet object config
+type Config struct {
 	Type string `json:"type"`
 	Name string `json:"name"`
 	Addr string `json:"addr"`
@@ -53,8 +53,8 @@ type Object struct {
 
 // Echonet
 type Echonet struct {
-	Nodes      []*EchonetNode
-	RecvChan   chan *EchonetNode
+	ObjectList []*EchonetObject
+	RecvChan   chan *EchonetObject
 	mconn_send *net.UDPConn
 	mconn_recv *ipv4.PacketConn
 }
@@ -77,7 +77,7 @@ func NewEchonet() (*Echonet, error) {
 	}
 
 	return &Echonet{
-		RecvChan:   make(chan *EchonetNode, 32),
+		RecvChan:   make(chan *EchonetObject, 32),
 		mconn_send: conn_send,
 		mconn_recv: conn_recv,
 	}, nil
@@ -112,10 +112,10 @@ func (en *Echonet) receiver(conn *ipv4.PacketConn) {
 		src, _, _ := net.SplitHostPort(addr.String())
 		log.Printf("Recv: %+v => %+v %s\n", src, cm.Dst, recv_pkt.String())
 
-		for _, node := range en.Nodes {
-			if node.addr.IP.String() == src &&
-				node.GetEoj() == recv_pkt.GetSeoj() {
-				node.Handler(recv_pkt)
+		for _, obj := range en.ObjectList {
+			if obj.addr.IP.String() == src &&
+				obj.GetEoj() == recv_pkt.GetSeoj() {
+				obj.Handler(recv_pkt)
 			}
 		}
 	}
@@ -127,7 +127,7 @@ func (en *Echonet) Start() error {
 	return nil
 }
 
-func (en *Echonet) NewNode(cfg Object) (*EchonetNode, error) {
+func (en *Echonet) NewObject(cfg Config) (*EchonetObject, error) {
 	udpAddr, err := net.ResolveUDPAddr("udp4",
 		net.JoinHostPort(cfg.Addr, strconv.Itoa(ECHONET_PORT)))
 	if err != nil {
@@ -144,7 +144,7 @@ func (en *Echonet) NewNode(cfg Object) (*EchonetNode, error) {
 		return nil, err
 	}
 
-	node := EchonetNode{
+	obj := EchonetObject{
 		parent: en,
 		addr:   udpAddr,
 		conn:   conn_send,
@@ -152,23 +152,23 @@ func (en *Echonet) NewNode(cfg Object) (*EchonetNode, error) {
 		eoj:    uint32(eoj),
 		cfg:    cfg,
 	}
-	en.Nodes = append(en.Nodes, &node)
+	en.ObjectList = append(en.ObjectList, &obj)
 
-	return &node, nil
+	return &obj, nil
 }
 
-func (en *Echonet) FindNode(objtype, objname string) *EchonetNode {
-	for _, node := range en.Nodes {
-		if node.cfg.Type == objtype && node.cfg.Name == objname {
-			return node
+func (en *Echonet) FindObject(objtype, objname string) *EchonetObject {
+	for _, obj := range en.ObjectList {
+		if obj.cfg.Type == objtype && obj.cfg.Name == objname {
+			return obj
 		}
 	}
 	return nil
 }
 
 func (en *Echonet) StateAll() error {
-	for _, node := range en.Nodes {
-		err := node.State()
+	for _, obj := range en.ObjectList {
+		err := obj.State()
 		if err != nil {
 			return err
 		}
@@ -176,33 +176,33 @@ func (en *Echonet) StateAll() error {
 	return nil
 }
 
-func (en *Echonet) NodeList() []*EchonetNode {
-	return en.Nodes
+func (en *Echonet) List() []*EchonetObject {
+	return en.ObjectList
 }
 
-func (node *EchonetNode) GetEoj() uint32 {
-	return node.eoj
+func (obj *EchonetObject) GetEoj() uint32 {
+	return obj.eoj
 }
 
-func (node *EchonetNode) GetType() string {
-	return node.cfg.Type
+func (obj *EchonetObject) GetType() string {
+	return obj.cfg.Type
 }
 
-func (node *EchonetNode) GetName() string {
-	return node.cfg.Name
+func (obj *EchonetObject) GetName() string {
+	return obj.cfg.Name
 }
 
-func (node *EchonetNode) sendPacket(pkt *EchonetPacket) error {
-	pkt.SetTid(node.tid)
-	node.tid += 1
+func (obj *EchonetObject) sendPacket(pkt *EchonetPacket) error {
+	pkt.SetTid(obj.tid)
+	obj.tid += 1
 
 	send_mutex.Lock()
 
-	_, err := node.conn.Write(pkt.Bytes())
+	_, err := obj.conn.Write(pkt.Bytes())
 	if err != nil {
 		return fmt.Errorf("send failed: %s", err)
 	}
-	dst, _, _ := net.SplitHostPort(node.conn.RemoteAddr().String())
+	dst, _, _ := net.SplitHostPort(obj.conn.RemoteAddr().String())
 	log.Printf("Send: %s %s\n", dst, pkt.String())
 	time.Sleep(800 * time.Millisecond)
 
@@ -210,30 +210,30 @@ func (node *EchonetNode) sendPacket(pkt *EchonetPacket) error {
 	return nil
 }
 
-func (node *EchonetNode) SetPower(pow string) error {
+func (obj *EchonetObject) SetPower(pow string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_SETI)
 	if pow == "on" {
 		pkt.AddProperty(EPC_POWER, EDT_ON) // power on
 	} else {
 		pkt.AddProperty(EPC_POWER, EDT_OFF) // power off
 	}
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) GetPower() string {
-	if node.power {
+func (obj *EchonetObject) GetPower() string {
+	if obj.power {
 		return "on"
 	}
 	return "off"
 }
 
-func (node *EchonetNode) SetMode(mode string) error {
+func (obj *EchonetObject) SetMode(mode string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_SETI)
 
 	switch mode {
@@ -260,20 +260,20 @@ func (node *EchonetNode) SetMode(mode string) error {
 		return fmt.Errorf("invalid mode: %s", mode)
 	}
 
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) GetMode() (mode string) {
-	if node.power {
-		return node.mode
+func (obj *EchonetObject) GetMode() (mode string) {
+	if obj.power {
+		return obj.mode
 	}
 	return "off"
 }
 
-func (node *EchonetNode) SetFan(mode string) error {
+func (obj *EchonetObject) SetFan(mode string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_SETI)
 
 	switch mode {
@@ -289,11 +289,11 @@ func (node *EchonetNode) SetFan(mode string) error {
 		return fmt.Errorf("invalid mode: %s", mode)
 	}
 
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) GetFan() (mode string) {
-	switch node.fan {
+func (obj *EchonetObject) GetFan() (mode string) {
+	switch obj.fan {
 	case EDT_AUTO:
 		return "auto"
 	case 0x31, 0x32:
@@ -306,10 +306,10 @@ func (node *EchonetNode) GetFan() (mode string) {
 	return "auto"
 }
 
-func (node *EchonetNode) SetSwing(mode string) error {
+func (obj *EchonetObject) SetSwing(mode string) error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_SETI)
 
 	switch mode {
@@ -325,11 +325,11 @@ func (node *EchonetNode) SetSwing(mode string) error {
 		return fmt.Errorf("invalid mode: %s", mode)
 	}
 
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) GetSwing() (mode string) {
-	switch node.fan {
+func (obj *EchonetObject) GetSwing() (mode string) {
+	switch obj.fan {
 	case EDT_OFF:
 		return "off"
 	case 0x41:
@@ -342,8 +342,8 @@ func (node *EchonetNode) GetSwing() (mode string) {
 	return "off"
 }
 
-func (node *EchonetNode) SetTargetTemp(temp int) error {
-	if node.target_temp == 0xfd {
+func (obj *EchonetObject) SetTargetTemp(temp int) error {
+	if obj.target_temp == 0xfd {
 		// In case of 0xfd, the target temperature is auto.
 		return nil // ignore setting
 	}
@@ -353,67 +353,67 @@ func (node *EchonetNode) SetTargetTemp(temp int) error {
 
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_SETI)
 	pkt.AddProperty(EPC_TARGET_TEMP, byte(temp))
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) GetTargetTemp() (temp int) {
-	if node.target_temp == 0xfd {
+func (obj *EchonetObject) GetTargetTemp() (temp int) {
+	if obj.target_temp == 0xfd {
 		// In case of 0xfd, the target temperature is auto.
-		return node.room_temp
+		return obj.room_temp
 	}
-	return node.target_temp
+	return obj.target_temp
 }
 
-func (node *EchonetNode) SetTargetHumidity(humi int) error {
+func (obj *EchonetObject) SetTargetHumidity(humi int) error {
 	if humi < 0 || humi > 100 {
 		return fmt.Errorf("invalid humidity %d", humi)
 	}
 
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_SETI)
 	pkt.AddProperty(EPC_TARGET_HUMIDITY, byte(humi))
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) GetTargetHumidity() (temp int) {
-	return node.target_humidity
+func (obj *EchonetObject) GetTargetHumidity() (temp int) {
+	return obj.target_humidity
 }
 
-func (node *EchonetNode) GetRoomTemp() int {
-	return node.room_temp
+func (obj *EchonetObject) GetRoomTemp() int {
+	return obj.room_temp
 }
 
-func (node *EchonetNode) GetOutdoorTemp() int {
-	return node.outdoor_temp
+func (obj *EchonetObject) GetOutdoorTemp() int {
+	return obj.outdoor_temp
 }
 
-func (node *EchonetNode) GetRoomHumidfy() int {
-	return node.room_humidity
+func (obj *EchonetObject) GetRoomHumidfy() int {
+	return obj.room_humidity
 }
 
-func (node *EchonetNode) Property() error {
+func (obj *EchonetObject) Property() error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_GET)
 	pkt.AddProperty(EPC_INF_PROPMAP) // announce map
 	pkt.AddProperty(EPC_SET_PROPMAP) // set map
 	pkt.AddProperty(EPC_GET_PROPMAP) // get map
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) State() error {
+func (obj *EchonetObject) State() error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
-	pkt.SetDeoj(node.eoj)
+	pkt.SetDeoj(obj.eoj)
 	pkt.SetEsv(ESV_GET)
 
-	switch node.cfg.Type {
+	switch obj.cfg.Type {
 	case "aircon":
 		pkt.AddProperty(EPC_POWER)           // power
 		pkt.AddProperty(EPC_MODE)            // mode
@@ -427,59 +427,59 @@ func (node *EchonetNode) State() error {
 	case "light":
 		pkt.AddProperty(EPC_POWER) // power
 	default:
-		return fmt.Errorf("invalid type: %s", node.cfg.Type)
+		return fmt.Errorf("invalid type: %s", obj.cfg.Type)
 	}
 
-	return node.sendPacket(pkt)
+	return obj.sendPacket(pkt)
 }
 
-func (node *EchonetNode) Handler(pkt *EchonetPacket) {
+func (obj *EchonetObject) Handler(pkt *EchonetPacket) {
 	if pkt.ESV == ESV_GET_RES || pkt.ESV == ESV_SETGET_RES ||
 		pkt.ESV == ESV_INF {
 		for _, prop := range pkt.Props {
 			switch prop.EPC {
 			case EPC_POWER:
-				node.power = prop.EDT[0] == EDT_ON
+				obj.power = prop.EDT[0] == EDT_ON
 			case EPC_MODE:
 				switch prop.EDT[0] {
 				case 0x41:
-					node.mode = "auto"
+					obj.mode = "auto"
 				case 0x42:
-					node.mode = "cool"
+					obj.mode = "cool"
 				case 0x43:
-					node.mode = "heat"
+					obj.mode = "heat"
 				case 0x44:
-					node.mode = "dry"
+					obj.mode = "dry"
 				case 0x45:
-					node.mode = "fan"
+					obj.mode = "fan"
 				case 0x46:
-					node.mode = "other"
+					obj.mode = "other"
 				}
 			case EPC_TARGET_TEMP:
-				node.target_temp = int(prop.EDT[0])
+				obj.target_temp = int(prop.EDT[0])
 			case EPC_ROOM_TEMP:
-				node.room_temp = int(int8(prop.EDT[0]))
+				obj.room_temp = int(int8(prop.EDT[0]))
 			case EPC_OUTDOOR_TEMP:
-				node.outdoor_temp = int(int8(prop.EDT[0]))
+				obj.outdoor_temp = int(int8(prop.EDT[0]))
 			case EPC_ROOM_HUMIDITY:
-				node.room_humidity = int(prop.EDT[0])
+				obj.room_humidity = int(prop.EDT[0])
 			case EPC_TARGET_HUMIDITY:
-				node.target_humidity = int(prop.EDT[0])
+				obj.target_humidity = int(prop.EDT[0])
 			case EPC_FAN:
-				node.fan = int(prop.EDT[0])
+				obj.fan = int(prop.EDT[0])
 			case EPC_SWING:
-				node.swing = int(prop.EDT[0])
+				obj.swing = int(prop.EDT[0])
 			}
 		}
-		if node.power == false {
-			node.mode = "off"
+		if obj.power == false {
+			obj.mode = "off"
 		}
-		if node.target_temp == 0xfd {
+		if obj.target_temp == 0xfd {
 			// In case of 0xfd, the target temperature is auto.
-			node.target_temp = node.room_temp
+			obj.target_temp = obj.room_temp
 		}
 
-		node.parent.RecvChan <- node
+		obj.parent.RecvChan <- obj
 		//log.Printf("Handler: %+v\n", node)
 	}
 }

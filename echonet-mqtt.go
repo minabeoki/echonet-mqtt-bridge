@@ -46,13 +46,13 @@ func echonet_mqtt(cfg Config) error {
 		return err
 	}
 
-	for _, obj := range cfg.ObjectList {
-		node, err := enet.NewNode(obj)
+	for _, c := range cfg.ObjectList {
+		obj, err := enet.NewObject(c)
 		if err != nil {
 			return err
 		}
-		log.Printf("added %s:%06x %s %s\n", obj.Addr,
-			node.GetEoj(), node.GetType(), node.GetName())
+		log.Printf("added %s:%06x %s %s\n", c.Addr,
+			obj.GetEoj(), obj.GetType(), obj.GetName())
 	}
 
 	err = enet.Start()
@@ -81,9 +81,9 @@ func echonet_mqtt(cfg Config) error {
 		}
 	}()
 
-	for _, node := range enet.NodeList() {
-		topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
-		switch node.GetType() {
+	for _, obj := range enet.List() {
+		topic := fmt.Sprintf("%s/%s", obj.GetType(), obj.GetName())
+		switch obj.GetType() {
 		case "light":
 			mqtt.Subscribe(topic + "/power/set")
 		case "aircon":
@@ -95,33 +95,33 @@ func echonet_mqtt(cfg Config) error {
 		}
 	}
 
-	var update_nodes []*echonet.EchonetNode
+	var update_nodes []*echonet.EchonetObject
 
 	for {
 		select {
 
-		case node := <-enet.RecvChan:
+		case obj := <-enet.RecvChan:
 			//log.Printf("recv_echonet: %+v\n", node)
-			topic := fmt.Sprintf("%s/%s", node.GetType(), node.GetName())
-			switch node.GetType() {
+			topic := fmt.Sprintf("%s/%s", obj.GetType(), obj.GetName())
+			switch obj.GetType() {
 
 			case "light":
-				mqtt.Send(topic+"/power", node.GetPower())
+				mqtt.Send(topic+"/power", obj.GetPower())
 
 			case "aircon":
-				mqtt.Send(topic+"/mode", node.GetMode())
+				mqtt.Send(topic+"/mode", obj.GetMode())
 				mqtt.Send(topic+"/temperature",
-					strconv.Itoa(node.GetTargetTemp()))
+					strconv.Itoa(obj.GetTargetTemp()))
 				mqtt.Send("sensor/"+topic+"/temperature",
-					strconv.Itoa(node.GetRoomTemp()))
+					strconv.Itoa(obj.GetRoomTemp()))
 				mqtt.Send("sensor/"+topic+"/outtemp",
-					strconv.Itoa(node.GetOutdoorTemp()))
+					strconv.Itoa(obj.GetOutdoorTemp()))
 				mqtt.Send(topic+"/humidity",
-					strconv.Itoa(node.GetTargetHumidity()))
+					strconv.Itoa(obj.GetTargetHumidity()))
 				mqtt.Send("sensor/"+topic+"/humidity",
-					strconv.Itoa(node.GetRoomHumidfy()))
-				mqtt.Send(topic+"/fan", node.GetFan())
-				mqtt.Send(topic+"/swing", node.GetSwing())
+					strconv.Itoa(obj.GetRoomHumidfy()))
+				mqtt.Send(topic+"/fan", obj.GetFan())
+				mqtt.Send(topic+"/swing", obj.GetSwing())
 			}
 
 		case msg := <-recv_mqtt:
@@ -129,7 +129,7 @@ func echonet_mqtt(cfg Config) error {
 			topic := strings.Split(msg[0], "/")
 			payload := msg[1]
 
-			node := enet.FindNode(topic[0], topic[1])
+			node := enet.FindObject(topic[0], topic[1])
 			if node == nil {
 				return fmt.Errorf("invalid topic: %s", msg[0])
 			}

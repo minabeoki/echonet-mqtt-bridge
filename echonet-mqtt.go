@@ -14,7 +14,7 @@ import (
 
 type Config struct {
 	Broker     string           `json:"broker"`
-	ObjectList []echonet.Object `json:"list"`
+	ObjectList []echonet.Config `json:"list"`
 }
 
 func main() {

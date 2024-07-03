@@ -21,7 +21,18 @@ const (
 	ESV_INFC_RES   = 0x7a
 	ESV_SETGET_RES = 0x7e
 
+	// super class
 	EPC_POWER           = 0x80
+	EPC_INF_PROPMAP     = 0x9d
+	EPC_SET_PROPMAP     = 0x9e
+	EPC_GET_PROPMAP     = 0x9f
+	EPC_NODE_INS_NUM    = 0xd3
+	EPC_NODE_CLASS_NUM  = 0xd4
+	EPC_NODE_INS_INF    = 0xd5
+	EPC_NODE_INS_LIST   = 0xd6
+	EPC_NODE_CLASS_LIST = 0xd7
+
+	// air conditioner
 	EPC_FAN             = 0xa0
 	EPC_SWING           = 0xa3
 	EPC_MODE            = 0xb0
@@ -33,26 +44,22 @@ const (
 	EPC_HUMIDIFY        = 0xc1
 	EPC_HUMIDIFY_LEVEL  = 0xc4
 
-	EPC_INF_PROPMAP     = 0x9d
-	EPC_SET_PROPMAP     = 0x9e
-	EPC_GET_PROPMAP     = 0x9f
-	EPC_NODE_INS_NUM    = 0xd3
-	EPC_NODE_CLASS_NUM  = 0xd4
-	EPC_NODE_INS_INF    = 0xd5
-	EPC_NODE_INS_LIST   = 0xd6
-	EPC_NODE_CLASS_LIST = 0xd7
+	// lighting
+	EPC_BRIGHTNESS = 0xb0
 
 	EDT_ON   = 0x30
 	EDT_OFF  = 0x31
 	EDT_AUTO = 0x41
 )
 
+// property in ECHONET packet
 type EchonetProperty struct {
 	EPC byte
 	PDC byte
 	EDT []byte
 }
 
+// ECHONET packet
 type EchonetPacket struct {
 	EHD   uint16
 	TID   uint16

@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	ECHONET_PORT      = 3610
-	ECHONET_EOJ_NODE  = 0x0ef001
-	ECHONET_MULTICAST = "224.0.23.0"
+	ECHONET_PORT      = 3610         // ECHONET port number
+	ECHONET_EOJ_NODE  = 0x0ef001     // ECHONET node object code
+	ECHONET_MULTICAST = "224.0.23.0" // ECHONET multicast address
 )
 
 var (

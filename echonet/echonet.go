@@ -440,6 +440,7 @@ func (obj *EchonetObject) Handler(pkt *EchonetPacket) {
 			switch prop.EPC {
 			case EPC_POWER:
 				obj.power = prop.EDT[0] == EDT_ON
+				// While power is off, keep the mode.
 			case EPC_MODE:
 				switch prop.EDT[0] {
 				case 0x41:
@@ -471,9 +472,7 @@ func (obj *EchonetObject) Handler(pkt *EchonetPacket) {
 				obj.swing = int(prop.EDT[0])
 			}
 		}
-		if obj.power == false {
-			obj.mode = "off"
-		}
+
 		if obj.target_temp == 0xfd {
 			// In case of 0xfd, the target temperature is auto.
 			obj.target_temp = obj.room_temp

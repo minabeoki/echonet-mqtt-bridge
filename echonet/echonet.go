@@ -466,8 +466,16 @@ func (obj *EchonetObject) Handler(pkt *EchonetPacket) {
 				obj.target_temp = int(prop.EDT[0])
 			case EPC_ROOM_TEMP:
 				obj.room_temp = int(int8(prop.EDT[0]))
+				if obj.room_temp < -127 || obj.room_temp > 125 {
+					// error value
+					obj.room_temp = 20 // tentative
+				}
 			case EPC_OUTDOOR_TEMP:
 				obj.outdoor_temp = int(int8(prop.EDT[0]))
+				if obj.outdoor_temp < -127 || obj.outdoor_temp > 125 {
+					// error value
+					obj.outdoor_temp = 20 // tentative
+				}
 			case EPC_ROOM_HUMIDITY:
 				obj.room_humidity = int(prop.EDT[0])
 			case EPC_TARGET_HUMIDITY:

@@ -23,6 +23,12 @@ const (
 
 	// super class
 	EPC_POWER           = 0x80
+	EPC_PLACE           = 0x81
+	EPC_VERSION         = 0x82
+	EPC_WATT            = 0x84
+	EPC_WATT_INTEGRATE  = 0x85
+	EPC_ERROR_CODE      = 0x86
+	EPC_POWER_SAVE      = 0x8f
 	EPC_INF_PROPMAP     = 0x9d
 	EPC_SET_PROPMAP     = 0x9e
 	EPC_GET_PROPMAP     = 0x9f
@@ -145,7 +151,7 @@ func (pkt *EchonetPacket) String() string {
 	}
 
 	for _, prop := range pkt.Props {
-		s += fmt.Sprintf(" EPC:%02x", prop.EPC)
+		s += fmt.Sprintf(" (%02x", prop.EPC)
 		edt_list := prop.EDT
 		if prop.EPC == EPC_INF_PROPMAP ||
 			prop.EPC == EPC_SET_PROPMAP ||
@@ -156,6 +162,7 @@ func (pkt *EchonetPacket) String() string {
 		for _, edt := range edt_list {
 			s += fmt.Sprintf(" %02x", edt)
 		}
+		s += ")"
 	}
 
 	return s

@@ -122,6 +122,8 @@ func echonet_mqtt(cfg Config) error {
 					strconv.Itoa(obj.GetRoomHumidfy()))
 				mqtt.Send(topic+"/fan", obj.GetFan())
 				mqtt.Send(topic+"/swing", obj.GetSwing())
+				mqtt.Send("sensor/"+topic+"/watt",
+					strconv.Itoa(obj.GetWatt()))
 			}
 
 		case msg := <-recv_mqtt:

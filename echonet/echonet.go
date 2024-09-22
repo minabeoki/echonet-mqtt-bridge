@@ -38,6 +38,7 @@ type EchonetObject struct {
 	outdoor_temp    int
 	fan             int
 	swing           int
+	watt            int
 	tid             uint16
 	eoj             uint32
 	cfg             Config
@@ -396,6 +397,10 @@ func (obj *EchonetObject) GetRoomHumidfy() int {
 	return obj.room_humidity
 }
 
+func (obj *EchonetObject) GetWatt() int {
+	return obj.watt
+}
+
 func (obj *EchonetObject) Property() error {
 	pkt := NewEchonetPacket()
 	pkt.SetSeoj(ECHONET_EOJ_NODE)
@@ -419,11 +424,12 @@ func (obj *EchonetObject) State() error {
 		pkt.AddProperty(EPC_MODE)            // mode
 		pkt.AddProperty(EPC_TARGET_TEMP)     // target temp
 		pkt.AddProperty(EPC_TARGET_HUMIDITY) // target humidity
-		pkt.AddProperty(EPC_ROOM_HUMIDITY)   // room humidity
 		pkt.AddProperty(EPC_ROOM_TEMP)       // room temp
+		pkt.AddProperty(EPC_ROOM_HUMIDITY)   // room humidity
 		pkt.AddProperty(EPC_OUTDOOR_TEMP)    // outdoor temp
 		pkt.AddProperty(EPC_FAN)             // fan
 		pkt.AddProperty(EPC_SWING)           // swing
+		pkt.AddProperty(EPC_WATT)            // watt
 	case "light":
 		pkt.AddProperty(EPC_POWER) // power
 	default:
@@ -470,12 +476,9 @@ func (obj *EchonetObject) Handler(pkt *EchonetPacket) {
 				obj.fan = int(prop.EDT[0])
 			case EPC_SWING:
 				obj.swing = int(prop.EDT[0])
+			case EPC_WATT:
+				obj.watt = int(prop.EDT[0])*0x100 + int(prop.EDT[1])
 			}
-		}
-
-		if obj.target_temp == 0xfd {
-			// In case of 0xfd, the target temperature is auto.
-			obj.target_temp = obj.room_temp
 		}
 
 		obj.parent.RecvChan <- obj
